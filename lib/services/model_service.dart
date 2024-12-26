@@ -4,40 +4,71 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 class ModelService {
+  // Singleton pattern
+  static final ModelService _instance = ModelService._internal();
+  factory ModelService() => _instance;
+  ModelService._internal();
+
   static const String MODEL_URL =
-      'https://storage.googleapis.com/mediapipe-models/text_classifier/bert_classifier/float32/1/bert_classifier.tflite';
+      'https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q4_K_M.gguf';
+
+  static const int MAX_TOKENS = 512;
+  static const int VOCAB_SIZE = 32000;
 
   Interpreter? _interpreter;
   bool _isInitialized = false;
   bool _isDownloading = false;
 
+  // Stream controller para el progreso
+  final _progressController = StreamController<double>.broadcast();
+  final _loadingController = StreamController<String>.broadcast();
+
+  Stream<double> get progressStream => _progressController.stream;
+  Stream<String> get loadingStream => _loadingController.stream;
+
+  // Agregar getter para el estado de inicialización
+  bool get isInitialized => _isInitialized;
+
+  // Implementación básica de tokenización
+  List<int> _simpleTokenize(String text) {
+    return text
+        .toLowerCase()
+        .split(' ')
+        .expand((word) => word.codeUnits)
+        .map((e) => e % VOCAB_SIZE)
+        .toList();
+  }
+
   Future<void> initializeModel() async {
     if (_isInitialized) return;
     if (_isDownloading) {
-      print('Ya se está descargando el modelo...');
+      _loadingController.add('Ya se está descargando el modelo...');
       return;
     }
 
     try {
-      print('Iniciando carga del modelo...');
+      _loadingController.add('Iniciando carga del modelo...');
       _isDownloading = true;
 
-      // Intentar cargar el modelo local primero
       final modelFile = await _getModelFile();
       if (await modelFile.exists()) {
-        print('Usando modelo local existente');
+        _loadingController.add('Cargando modelo existente...');
         await _initializeInterpreter(modelFile);
+        _loadingController.add('Modelo cargado exitosamente');
         return;
       }
 
-      // Si no existe, descargar
-      print('Descargando nuevo modelo...');
+      _loadingController.add('Descargando nuevo modelo...');
       await _downloadModel(modelFile);
+      _loadingController.add('Inicializando modelo...');
       await _initializeInterpreter(modelFile);
+      _loadingController.add('¡Modelo listo!');
     } catch (e) {
-      print('Error al inicializar el modelo: $e');
+      _loadingController.add('Error al inicializar el modelo: $e');
       _isInitialized = false;
       rethrow;
     } finally {
@@ -62,19 +93,31 @@ class ModelService {
 
   Future<File> _getModelFile() async {
     final appDir = await getApplicationDocumentsDirectory();
-    return File('${appDir.path}/bert_model.tflite');
+    return File('${appDir.path}/llama2_chat.gguf');
   }
 
   Future<void> _downloadModel(File modelFile) async {
     try {
-      final response = await http.get(Uri.parse(MODEL_URL));
-      if (response.statusCode != 200) {
-        throw Exception('Error al descargar modelo: ${response.statusCode}');
-      }
-      await modelFile.writeAsBytes(response.bodyBytes);
-      print('Modelo descargado correctamente');
+      final response = await http.Client().send(
+        http.Request('GET', Uri.parse(MODEL_URL))
+      );
+
+      final totalBytes = response.contentLength ?? 0;
+      var receivedBytes = 0;
+
+      final fileStream = modelFile.openWrite();
+      await response.stream.map((chunk) {
+        receivedBytes += chunk.length;
+        // Calcular y emitir el progreso
+        final progress = (receivedBytes / totalBytes) * 100;
+        _progressController.add(progress);
+        return chunk;
+      }).pipe(fileStream);
+
+      await fileStream.flush();
+      await fileStream.close();
     } catch (e) {
-      print('Error al descargar modelo: $e');
+      print('Error en la descarga: $e');
       rethrow;
     }
   }
@@ -89,32 +132,49 @@ class ModelService {
     }
 
     try {
-      // Implementación simplificada para pruebas
-      final input = [_tokenizeText(text)];
-      var output = List.filled(1, List.filled(1, 0.0));
+      final prompt = '''[INST] $text [/INST]''';
+
+      var inputTensor = _interpreter!.getInputTensor(0);
+      var outputTensor = _interpreter!.getOutputTensor(0);
+
+      // Tokenizar usando nuestra implementación simple
+      var tokens = _simpleTokenize(prompt);
+
+      var input = List.filled(1, List.filled(MAX_TOKENS, 0), growable: false);
+      for (var i = 0; i < tokens.length && i < MAX_TOKENS; i++) {
+        input[0][i] = tokens[i];
+      }
+
+      var output = List.generate(
+        1,
+        (i) => List.filled(VOCAB_SIZE, 0.0),
+        growable: false,
+      );
 
       _interpreter?.run(input, output);
 
-      // Respuesta temporal mientras debuggeamos
-      return "Procesado: $text\nSalida del modelo: ${output[0][0]}";
+      return _decodeOutput(output[0]);
     } catch (e) {
       print('Error en procesamiento: $e');
-      return 'Error al procesar el texto: $e';
+      return 'Lo siento, ocurrió un error al procesar el texto';
     }
   }
 
-  List<double> _tokenizeText(String text) {
-    // Tokenización simplificada para pruebas
-    return text
-        .split(' ')
-        .map((word) => word.length.toDouble())
-        .take(512)
-        .toList();
+  String _decodeOutput(List<double> logits) {
+    var indices = List.generate(logits.length, (i) => i)
+      ..sort((a, b) => logits[b].compareTo(logits[a]));
+
+    // Convertir los índices más probables a caracteres
+    return indices
+        .take(50) // Tomar los 50 tokens más probables
+        .map((i) => String.fromCharCode(i % 128)) // Convertir a ASCII
+        .join();
   }
 
   void dispose() {
     _interpreter?.close();
     _interpreter = null;
     _isInitialized = false;
+    _loadingController.close();
   }
 }
