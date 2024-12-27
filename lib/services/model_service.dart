@@ -1,11 +1,10 @@
 // ignore_for_file: constant_identifier_names, await_only_futures, avoid_print, unused_local_variable
 
+import 'dart:async';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:path_provider/path_provider.dart';
-import 'dart:io';
-import 'dart:async';
-import 'package:flutter/foundation.dart';
 
 class ModelService {
   // Singleton pattern
@@ -13,11 +12,15 @@ class ModelService {
   factory ModelService() => _instance;
   ModelService._internal();
 
+  // Cambiamos a un modelo TFLite compatible
   static const String MODEL_URL =
-      'https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGUF/resolve/main/llama-2-7b-chat.Q4_K_M.gguf';
+      'https://storage.googleapis.com/mediapipe-models/text/bert_qa/float32/1/bert_qa.tflite';
 
-  static const int MAX_TOKENS = 512;
-  static const int VOCAB_SIZE = 32000;
+  //'https://storage.googleapis.com/download.tensorflow.org/models/tflite/bert_qa.tflite';
+  // O alternativamente:
+
+  static const int MAX_TOKENS = 384;
+  static const int VOCAB_SIZE = 30522; // Tamaño del vocabulario BERT
 
   Interpreter? _interpreter;
   bool _isInitialized = false;
@@ -78,12 +81,24 @@ class ModelService {
 
   Future<void> _initializeInterpreter(File modelFile) async {
     try {
-      // Configurar opciones básicas
       final options = InterpreterOptions()..threads = 2;
+/*         ..addDelegate(
+            GpuDelegateV2()); // Agregar aceleración GPU si está disponible */
 
-      _interpreter = await Interpreter.fromFile(modelFile, options: options);
+      _interpreter = await Interpreter.fromFile(
+        modelFile,
+        options: options,
+      );
+
+      // Verificar que el modelo se cargó correctamente
+      var inputTensors = _interpreter!.getInputTensors();
+      var outputTensors = _interpreter!.getOutputTensors();
+
+      print('Tensores de entrada: ${inputTensors.length}');
+      print('Tensores de salida: ${outputTensors.length}');
+
       _isInitialized = true;
-      print('Intérprete inicializado correctamente');
+      _loadingController.add('Modelo inicializado correctamente');
     } catch (e) {
       print('Error al inicializar intérprete: $e');
       _isInitialized = false;
@@ -98,26 +113,47 @@ class ModelService {
 
   Future<void> _downloadModel(File modelFile) async {
     try {
-      final response = await http.Client().send(
-        http.Request('GET', Uri.parse(MODEL_URL))
-      );
+      // Verificar espacio disponible (necesitamos ~500MB para estar seguros)
+      final directory = await getApplicationDocumentsDirectory();
+      final available = await _getAvailableSpace(directory);
+      const requiredSpace = 500 * 1024 * 1024; // 500MB
+
+      if (available < requiredSpace) {
+        throw Exception('Se necesitan al menos 500MB de espacio libre');
+      }
+
+      _loadingController.add('Iniciando descarga del modelo...');
+
+      final response =
+          await http.Client().send(http.Request('GET', Uri.parse(MODEL_URL)));
 
       final totalBytes = response.contentLength ?? 0;
       var receivedBytes = 0;
 
+      await modelFile.parent.create(recursive: true);
+
       final fileStream = modelFile.openWrite();
       await response.stream.map((chunk) {
         receivedBytes += chunk.length;
-        // Calcular y emitir el progreso
         final progress = (receivedBytes / totalBytes) * 100;
         _progressController.add(progress);
+
+        // Actualizar mensaje de progreso
+        if (progress % 10 == 0) {
+          // Cada 10%
+          _loadingController
+              .add('Descargando: ${progress.toStringAsFixed(1)}%');
+        }
+
         return chunk;
       }).pipe(fileStream);
 
       await fileStream.flush();
       await fileStream.close();
+
+      _loadingController.add('¡Descarga completada!');
     } catch (e) {
-      print('Error en la descarga: $e');
+      _loadingController.add('Error: $e');
       rethrow;
     }
   }
@@ -132,25 +168,26 @@ class ModelService {
     }
 
     try {
-      final prompt = '''[INST] $text [/INST]''';
-
       var inputTensor = _interpreter!.getInputTensor(0);
       var outputTensor = _interpreter!.getOutputTensor(0);
 
-      // Tokenizar usando nuestra implementación simple
-      var tokens = _simpleTokenize(prompt);
-
+      // Preparar entrada para BERT
       var input = List.filled(1, List.filled(MAX_TOKENS, 0), growable: false);
+      var tokens = _simpleTokenize(text);
+
       for (var i = 0; i < tokens.length && i < MAX_TOKENS; i++) {
         input[0][i] = tokens[i];
       }
 
+      // Preparar salida
+      var outputShape = outputTensor.shape;
       var output = List.generate(
-        1,
-        (i) => List.filled(VOCAB_SIZE, 0.0),
+        outputShape[0],
+        (i) => List.filled(outputShape[1], 0.0),
         growable: false,
       );
 
+      // Ejecutar inferencia
       _interpreter?.run(input, output);
 
       return _decodeOutput(output[0]);
@@ -176,5 +213,48 @@ class ModelService {
     _interpreter = null;
     _isInitialized = false;
     _loadingController.close();
+  }
+
+  Future<int> _getAvailableSpace(Directory directory) async {
+    try {
+      if (Platform.isAndroid) {
+        try {
+          final df = await Process.run('df', [directory.path]);
+          if (df.exitCode == 0) {
+            final lines = df.stdout.toString().split('\n');
+            if (lines.length > 1) {
+              final values = lines[1].split(RegExp(r'\s+'));
+              return int.parse(values[3]) * 1024; // Convertir KB a bytes
+            }
+          }
+        } catch (e) {
+          print('Error al ejecutar df: $e');
+        }
+      }
+
+      // Método alternativo si el anterior falla o para iOS
+      final stat = await directory.stat();
+      final pathSize = await _getFolderSize(directory);
+      // Estimación aproximada del espacio disponible
+      return stat.size - pathSize;
+    } catch (e) {
+      print('Error al verificar espacio disponible: $e');
+      // Retornar un valor bajo para forzar la verificación de espacio
+      return 0;
+    }
+  }
+
+  Future<int> _getFolderSize(Directory directory) async {
+    int totalSize = 0;
+    try {
+      await for (final file in directory.list(recursive: true)) {
+        if (file is File) {
+          totalSize += await file.length();
+        }
+      }
+    } catch (e) {
+      print('Error al calcular tamaño de carpeta: $e');
+    }
+    return totalSize;
   }
 }
