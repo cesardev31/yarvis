@@ -58,7 +58,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBaTNzCsBIZNUtZoIbxe9LrYH78jgGlxgY',
+    apiKey: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
     appId: '1:51570400083:ios:fec1467eacfed0dd989fa6',
     messagingSenderId: '51570400083',
     projectId: 'yarvis-ia-chat',
