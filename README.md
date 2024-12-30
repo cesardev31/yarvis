@@ -1,16 +1,68 @@
-# yarvis
+# Yarvis
 
-A new Flutter project.
+Aplicación Flutter que utiliza la API de Gemini para generar contenido de texto.
 
-## Getting Started
+## Requisitos previos
 
-This project is a starting point for a Flutter application.
+- Flutter SDK (versión mínima: 3.x)
+- Dart
+- Emulador o dispositivo físico
+- API Key de Gemini
 
-A few resources to get you started if this is your first Flutter project:
+## Instalación
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+1. Clonar el repositorio:
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+git clone https://github.com/cesardev31/yarvis.git
+cd yarvis
+```
+
+2. Instalar dependencias:
+
+```bash
+flutter pub get
+```
+
+3. Configurar variables de entorno:
+   - Crear archivo `.env` en la raíz
+   - Agregar:
+   ```
+   API_KEY=tu_clave_api_de_gemini
+   ```
+
+## Estructura
+
+```
+lib/
+├── models/
+│   ├── chat_message.dart
+├── screens/
+│   ├── chat_screen.dart
+│   ├── loading_screen.dart
+│   └── virtual_assistant_screen.dart
+├── services/
+│   ├── llm_service.dart
+│   ├── model_service.dart
+│   ├── speech_service.dart
+│   └── tts_service.dart
+└── widgets/
+    ├── chat_message.dart
+    ├── input_bar.dart
+    ├── loading_screen.dart
+    └── main.dart
+```
+
+## Uso
+
+```bash
+flutter run
+```
+
+## Licencia
+
+MIT
+
+## Contacto
+
+[@cesardev31](https://github.com/cesardev31)
