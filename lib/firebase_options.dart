@@ -3,6 +3,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
@@ -49,16 +50,18 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyB1CGXmG9IB4TnMMg0ZjzqrpJiwrtw5JqE',
+  static String get API_KEY => dotenv.env['API_KEY'] ?? '';
+
+  static FirebaseOptions android = FirebaseOptions(
+    apiKey: API_KEY,
     appId: '1:51570400083:android:bb33a59b456af6a1989fa6',
     messagingSenderId: '51570400083',
     projectId: 'yarvis-ia-chat',
     storageBucket: 'yarvis-ia-chat.firebasestorage.app',
   );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+  static FirebaseOptions ios = FirebaseOptions(
+    apiKey: API_KEY,
     appId: '1:51570400083:ios:fec1467eacfed0dd989fa6',
     messagingSenderId: '51570400083',
     projectId: 'yarvis-ia-chat',

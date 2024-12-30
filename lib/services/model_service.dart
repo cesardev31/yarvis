@@ -26,7 +26,6 @@ class ModelService {
     _loadingController.add('Procesando texto...');
 
     try {
-      // Estructura correcta del cuerpo según el ejemplo de curl
       final requestBody = {
         "contents": [
           {
