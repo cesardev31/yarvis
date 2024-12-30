@@ -1,0 +1,22 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "yarvis-ia-chat",
+          "appId": "1:51570400083:android:bb33a59b456af6a1989fa6",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "yarvis-ia-chat",
+          "configurations": {
+            "android": "1:51570400083:android:bb33a59b456af6a1989fa6",
+            "ios": "1:51570400083:ios:fec1467eacfed0dd989fa6"
+          }
+        }
+      }
+    }
+  }
+}

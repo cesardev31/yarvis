@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "51570400083",
+    "project_id": "yarvis-ia-chat",
+    "storage_bucket": "yarvis-ia-chat.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:51570400083:android:bb33a59b456af6a1989fa6",
+        "android_client_info": {
+          "package_name": "com.yarvis.chat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB1CGXmG9IB4TnMMg0ZjzqrpJiwrtw5JqE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

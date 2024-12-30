@@ -1,4 +1,4 @@
-package com.cesardev.yarvis
+package com.yarvis.chat
 
 import io.flutter.embedding.android.FlutterActivity
 
