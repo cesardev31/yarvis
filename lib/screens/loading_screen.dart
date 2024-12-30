@@ -11,7 +11,6 @@ class LoadingScreen extends StatefulWidget {
 
 class _LoadingScreenState extends State<LoadingScreen> {
   String _loadingMessage = 'Iniciando...';
-  double _progress = 0.0;
 
   @override
   void initState() {
@@ -22,29 +21,27 @@ class _LoadingScreenState extends State<LoadingScreen> {
   Future<void> _initializeApp() async {
     final modelService = ModelService();
 
-    // Escuchar el progreso
-    modelService.progressStream.listen((progress) {
-      setState(() {
-        _progress = progress;
-      });
-    });
-
-    modelService.loadingStream.listen((message) {
-      setState(() {
-        _loadingMessage = message;
-      });
+    setState(() {
+      _loadingMessage = 'Verificando conexión con la API...';
     });
 
     try {
-      await modelService.initializeModel();
-      if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const ChatScreen()),
-        );
+      // Realiza una prueba de conexión enviando un mensaje a la API
+      final testResponse = await modelService.processText("Hello, Gemini API!");
+      if (testResponse.isNotEmpty) {
+        if (mounted) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const ChatScreen()),
+          );
+        }
+      } else {
+        setState(() {
+          _loadingMessage = 'Error: No se recibió respuesta válida de la API.';
+        });
       }
     } catch (e) {
       setState(() {
-        _loadingMessage = 'Error al inicializar: $e';
+        _loadingMessage = 'Error al conectar con la API: $e';
       });
     }
   }
@@ -56,19 +53,7 @@ class _LoadingScreenState extends State<LoadingScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
-              width: 200,
-              child: LinearProgressIndicator(
-                value: _progress / 100,
-                backgroundColor: Colors.grey[200],
-                valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              '${_progress.toStringAsFixed(1)}%',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            const CircularProgressIndicator(),
             const SizedBox(height: 20),
             Padding(
               padding: const EdgeInsets.all(20.0),

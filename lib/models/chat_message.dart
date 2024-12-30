@@ -9,6 +9,7 @@ class ChatMessage {
     required this.message,
     this.isProcessing = false,
     DateTime? timestamp,
+    required bool isUser,
   }) : timestamp = timestamp ?? DateTime.now();
 
   bool get isUser => sender == 'usuario';

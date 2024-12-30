@@ -1,15 +1,17 @@
 // ignore_for_file: avoid_print, deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'screens/loading_screen.dart';
 import 'package:flutter/foundation.dart';
 
-void main() {
+void main() async {
   // Filtrar logs no deseados
   if (kReleaseMode) {
     debugPrint = (String? message, {int? wrapWidth}) {};
   }
 
+  await dotenv.load();
   runApp(const MyApp());
 }
 

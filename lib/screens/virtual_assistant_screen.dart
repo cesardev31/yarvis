@@ -30,7 +30,6 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
   Future<void> _initializeServices() async {
     try {
       await Future.wait([
-        _modelService.initializeModel(),
         _speechService.initialize(),
         _ttsService.initialize(),
       ]);
@@ -46,6 +45,7 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
         sender: isUser ? 'usuario' : 'sistema',
         message: text,
         isProcessing: isProcessing,
+        isUser: isUser,
       ));
     });
   }
@@ -58,18 +58,17 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
     _addMessage(text);
 
     try {
-      _addMessage('', isUser: false, isProcessing: true);
+      _addMessage('',
+          isUser: false,
+          isProcessing: true); // Mensaje en estado de procesamiento
       final response = await _modelService.processText(text);
 
       setState(() {
-        _messages.removeLast();
+        _messages.removeLast(); // Elimina el mensaje de "procesando"
         _addMessage(response, isUser: false);
       });
-
-      await _ttsService.speak(response);
     } catch (e) {
-      print('Error al procesar entrada: $e');
-      _addMessage('Lo siento, hubo un error', isUser: false);
+      _addMessage('Error al procesar tu mensaje.', isUser: false);
     } finally {
       setState(() => _isProcessing = false);
     }
