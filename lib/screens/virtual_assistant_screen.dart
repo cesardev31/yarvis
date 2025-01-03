@@ -58,13 +58,11 @@ class _VirtualAssistantScreenState extends State<VirtualAssistantScreen> {
     _addMessage(text);
 
     try {
-      _addMessage('',
-          isUser: false,
-          isProcessing: true); // Mensaje en estado de procesamiento
+      _addMessage('', isUser: false, isProcessing: true);
       final response = await _modelService.processText(text);
 
       setState(() {
-        _messages.removeLast(); // Elimina el mensaje de "procesando"
+        _messages.removeLast();
         _addMessage(response, isUser: false);
       });
     } catch (e) {

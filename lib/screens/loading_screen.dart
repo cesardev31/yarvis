@@ -26,7 +26,6 @@ class _LoadingScreenState extends State<LoadingScreen> {
     });
 
     try {
-      // Realiza una prueba de conexión enviando un mensaje a la API
       final testResponse = await modelService.processText("Hello, Gemini API!");
       if (testResponse.isNotEmpty) {
         if (mounted) {

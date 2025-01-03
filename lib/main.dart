@@ -6,7 +6,6 @@ import 'screens/loading_screen.dart';
 
 void main() async {
   await dotenv.load(fileName: ".env");
-
   await Firebase.initializeApp();
 
   runApp(const MyApp());

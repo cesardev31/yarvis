@@ -15,9 +15,8 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<ChatMessage> _messages = [];
   final TextEditingController _controller = TextEditingController();
   bool _isProcessing = false;
-  final ModelService _modelService = ModelService(); // Asegúrate de tener esto
+  final ModelService _modelService = ModelService();
 
-  // Método para manejar el texto enviado
   void _handleSubmitted(String text) {
     if (text.isEmpty) return;
 
@@ -32,12 +31,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
     _controller.clear();
 
-    // Llamar al servicio para procesar el texto real
-    _processInput(
-        text); // Asegúrate de que esta línea sea llamada correctamente
+    _processInput(text);
   }
 
-  // Método para procesar el texto (llamada a la API)
   Future<void> _processInput(String text) async {
     if (text.isEmpty) return;
 
@@ -46,15 +42,12 @@ class _ChatScreenState extends State<ChatScreen> {
     _addMessage(text);
 
     try {
-      // Mensaje de procesamiento
       _addMessage('', isUser: false, isProcessing: true);
 
-      // Llamada al servicio para obtener respuesta de la API
       final response = await _modelService.processText(text);
 
-      // Actualizar la interfaz con la respuesta de la API
       setState(() {
-        _messages.removeLast(); // Eliminar el mensaje de "procesando"
+        _messages.removeLast();
         _addMessage(response, isUser: false);
       });
     } catch (e) {
@@ -64,7 +57,6 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  // Método para agregar un mensaje
   void _addMessage(String text,
       {bool isUser = true, bool isProcessing = false}) {
     setState(() {
@@ -85,11 +77,10 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          // Lista de mensajes
           Expanded(
             child: ListView.builder(
               itemCount: _messages.length,
-              reverse: true, // Muestra los mensajes más recientes al final
+              reverse: true,
               itemBuilder: (context, index) {
                 final message = _messages[_messages.length - 1 - index];
                 return ChatMessageWidget(message: message);
@@ -101,8 +92,7 @@ class _ChatScreenState extends State<ChatScreen> {
             controller: _controller,
             isProcessing: _isProcessing,
             isListening: false,
-            onSubmitted:
-                _handleSubmitted, // Esta línea ya usa _processInput correctamente
+            onSubmitted: _handleSubmitted,
             onMicPressed: () {},
             onMicReleased: () {},
           ),
